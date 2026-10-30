@@ -1,1 +1,276 @@
 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Catálogo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+  body { background: #eef2f7; padding: 15px; color: #2c3e50; }
+  h1 { text-align: center; font-size: 22px; }
+
+  .login-box { max-width: 400px; margin: 50px auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.1); text-align: center; }
+  .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; }
+  .hidden { display: none; }
+
+  .panel { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.08); margin-bottom: 15px; }
+  .panel h3 { margin-top: 0; color: #2980b9; font-size: 16px; }
+  .form-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .form-grid input, .form-grid textarea { width: 100%; padding: 10px; border: 1px solid #cfd8dc; border-radius: 6px; font-size: 14px; }
+  .form-grid textarea { height: 60px; }
+  
+  .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+  .btn { background: #27ae60; color: #fff; padding: 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: 600; text-align: center; }
+  .btn:active { filter: brightness(.8); }
+  .btn-blue { background: #2980b9; }
+  .btn-orange { background: #e67e22; }
+  .btn-red { background: #e74c3c; }
+  .btn-purple { background: #8e44ad; }
+
+  .config-box { background: #fff8e1; border: 1px solid #ffe082; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+  .config-box label { font-size: 12px; font-weight: bold; color: #555; }
+  .config-box input { width: 100%; padding: 8px; margin: 4px 0 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; }
+
+  .producto-card { display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid #eee; align-items: center; }
+  .producto-card img { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; }
+  .producto-info { flex: 1; }
+  .producto-info h3 { margin: 0 0 4px; font-size: 14px; }
+  .estado { padding: 10px; border-radius: 6px; font-size: 13px; margin-top: 10px; text-align: center; }
+  .estado.ok { background: #d4edda; color: #155724; }
+  .estado.error { background: #f8d7da; color: #721c24; }
+  .estado.info { background: #d1ecf1; color: #0c5460; }
+</style>
+</head>
+<body>
+
+<div id="login" class="login-box">
+  <h1>🔐 Admin Catálogo</h1>
+  <p style="color:#888;font-size:13px;">Ingresa la contraseña</p>
+  <input type="password" id="pass" placeholder="Contraseña" onkeydown="if(event.key==='Enter')entrar()">
+  <button class="btn btn-blue" style="width:100%;margin-top:10px;" onclick="entrar()">Entrar</button>
+  <p id="loginMsg" style="color:#e74c3c;font-size:13px;"></p>
+</div>
+
+<div id="panel" class="hidden">
+  <h1>📦 Panel de Administración</h1>
+
+  <div class="config-box">
+    <h3>⚙️ Configuración GitHub (solo se guarda en este navegador)</h3>
+    <label>Usuario de GitHub</label>
+    <input type="text" id="cfgUser" placeholder="tu-usuario" value="alexin19766-design">
+    <label>Repositorio</label>
+    <input type="text" id="cfgRepo" placeholder="mi-catalogo" value="mi-catalogo">
+    <label>Rama</label>
+    <input type="text" id="cfgBranch" placeholder="main" value="main">
+    <label>Ruta del archivo JSON</label>
+    <input type="text" id="cfgPath" placeholder="productos.json" value="productos.json">
+    <label>Token de GitHub (PAT)</label>
+    <input type="password" id="cfgToken" placeholder="ghp_...">
+    <button class="btn btn-purple" style="margin-top:8px;" onclick="guardarConfig()">Guardar configuración</button>
+  </div>
+
+  <div class="panel">
+    <h3>➕ Agregar producto</h3>
+    <div class="form-grid">
+      <input type="text" id="nombre" placeholder="Nombre *">
+      <input type="text" id="precio" placeholder="Precio *">
+      <input type="text" id="whatsapp" placeholder="WhatsApp (ej: 50212345678)">
+      <input type="file" id="imagen" accept="image/*">
+      <textarea id="descripcion" placeholder="Descripción"></textarea>
+    </div>
+    <button class="btn" style="margin-top:10px;" onclick="agregarProducto()">Agregar Producto</button>
+  </div>
+
+  <div class="panel">
+    <h3>📋 Productos actuales (<span id="contador">0</span>)</h3>
+    <div id="lista-productos"></div>
+  </div>
+
+  <div class="actions" style="margin-bottom:30px;">
+    <button class="btn btn-purple" onclick="publicarEnGitHub()">🚀 Publicar cambios en GitHub</button>
+    <button class="btn btn-blue" onclick="generarPDF()">📄 Generar PDF</button>
+    <button class="btn btn-orange" onclick="exportarJSONLocal()">💾 Descargar JSON</button>
+    <button class="btn btn-red" onclick="borrarTodo()">🗑️ Borrar todos los productos</button>
+  </div>
+  <div id="estado"></div>
+
+  <div id="catalogo-preview" style="background:#fff;padding:20px;border-radius:12px;margin-top:20px;">
+    <div style="text-align:center;border-bottom:3px solid #2c3e50;padding-bottom:10px;margin-bottom:15px;">
+      <h2 style="margin:0;font-size:20px;">CATÁLOGO DE PRODUCTOS</h2>
+      <p style="color:#888;font-size:12px;margin:5px 0 0;">Contáctanos por WhatsApp</p>
+    </div>
+    <div id="preview-productos"></div>
+  </div>
+</div>
+
+<script>
+const CLAVE_ADMIN = "admin123"; // <-- CAMBIA ESTA CONTRASEÑA
+
+function entrar() {
+  if (document.getElementById('pass').value === CLAVE_ADMIN) {
+    document.getElementById('login').classList.add('hidden');
+    document.getElementById('panel').classList.remove('hidden');
+    cargarConfig();
+    cargarProductos();
+  } else {
+    document.getElementById('loginMsg').textContent = 'Contraseña incorrecta';
+  }
+}
+
+function cargarConfig() {
+  const c = JSON.parse(localStorage.getItem('ghConfig')) || {};
+  document.getElementById('cfgUser').value = c.user || 'alexin19766-design';
+  document.getElementById('cfgRepo').value = c.repo || 'mi-catalogo';
+  document.getElementById('cfgBranch').value = c.branch || 'main';
+  document.getElementById('cfgPath').value = c.path || 'productos.json';
+  document.getElementById('cfgToken').value = c.token || '';
+}
+
+function guardarConfig() {
+  const c = {
+    user: document.getElementById('cfgUser').value.trim(),
+    repo: document.getElementById('cfgRepo').value.trim(),
+    branch: document.getElementById('cfgBranch').value.trim() || 'main',
+    path: document.getElementById('cfgPath').value.trim() || 'productos.json',
+    token: document.getElementById('cfgToken').value.trim()
+  };
+  localStorage.setItem('ghConfig', JSON.stringify(c));
+  mostrarEstado('✅ Configuración guardada', 'ok');
+}
+
+function getConfig() { return JSON.parse(localStorage.getItem('ghConfig')) || {}; }
+
+let productos = [];
+function cargarProductos() {
+  productos = JSON.parse(localStorage.getItem('misProductos')) || [];
+  renderizar();
+}
+function guardarLocal() { localStorage.setItem('misProductos', JSON.stringify(productos)); }
+
+function agregarProducto() {
+  const nombre = document.getElementById('nombre').value.trim();
+  const precio = document.getElementById('precio').value.trim();
+  const whatsapp = document.getElementById('whatsapp').value.trim();
+  const descripcion = document.getElementById('descripcion').value.trim();
+  const fileInput = document.getElementById('imagen');
+
+  if (!nombre || !precio) { alert('Nombre y precio obligatorios'); return; }
+
+  const nuevo = { nombre, precio, whatsapp, descripcion, imagen: '' };
+  const finalizar = () => {
+    productos.push(nuevo);
+    guardarLocal();
+    renderizar();
+    ['nombre','precio','whatsapp','descripcion'].forEach(id => document.getElementById(id).value = '');
+    fileInput.value = '';
+  };
+
+  if (fileInput.files && fileInput.files[0]) {
+    const r = new FileReader();
+    r.onload = e => { nuevo.imagen = e.target.result; finalizar(); };
+    r.readAsDataURL(fileInput.files[0]);
+  } else finalizar();
+}
+
+function eliminar(i) {
+  if (confirm('¿Eliminar producto?')) {
+    productos.splice(i, 1);
+    guardarLocal();
+    renderizar();
+  }
+}
+
+function borrarTodo() {
+  if (confirm('¿Borrar TODO?')) {
+    productos = [];
+    guardarLocal();
+    renderizar();
+  }
+}
+
+function renderizar() {
+  document.getElementById('contador').textContent = productos.length;
+  document.getElementById('lista-productos').innerHTML = productos.length === 0
+    ? '<p style="color:#999;text-align:center;font-size:13px;">No hay productos</p>'
+    : productos.map((p, i) => `
+      <div class="producto-card">
+        ${p.imagen ? `<img src="${p.imagen}">` : '<div style="width:60px;height:60px;background:#eee;border-radius:6px;"></div>'}
+        <div class="producto-info">
+          <h3>${p.nombre}</h3>
+          <div style="color:#e74c3c;font-weight:bold;font-size:13px;">Q ${p.precio}</div>
+        </div>
+        <button class="btn btn-red" style="padding:6px 10px;font-size:12px;width:auto;" onclick="eliminar(${i})">X</button>
+      </div>`).join('');
+
+  document.getElementById('preview-productos').innerHTML = productos.map(p => `
+    <div style="display:flex;gap:15px;padding:10px 0;border-bottom:1px solid #eee;page-break-inside:avoid;align-items:center;">
+      ${p.imagen ? `<img src="${p.imagen}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;">` : ''}
+      <div>
+        <h3 style="margin:0 0 5px;font-size:15px;">${p.nombre}</h3>
+        <div style="color:#e74c3c;font-weight:bold;font-size:15px;">Q ${p.precio}</div>
+        <div style="color:#666;font-size:12px;">${p.descripcion || ''}</div>
+      </div>
+    </div>`).join('');
+}
+
+async function publicarEnGitHub() {
+  const c = getConfig();
+  if (!c.user || !c.repo || !c.token) { mostrarEstado('❌ Configura usuario, repositorio y token', 'error'); return; }
+  if (productos.length === 0) { mostrarEstado('❌ No hay productos para publicar', 'error'); return; }
+
+  mostrarEstado('⏳ Publicando en GitHub...', 'info');
+
+  const apiUrl = `https://api.github.com/repos/${c.user}/${c.repo}/contents/${c.path}`;
+  const headers = {
+    'Authorization': `token ${c.token}`,
+    'Accept': 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json'
+  };
+
+  try {
+    let sha = null;
+    const getRes = await fetch(`${apiUrl}?ref=${c.branch}`, { headers });
+    if (getRes.ok) { sha = (await getRes.json()).sha; }
+
+    const contenido = JSON.stringify(productos, null, 2);
+    const contenidoB64 = btoa(unescape(encodeURIComponent(contenido)));
+    const body = { message: `Actualizar catálogo ${new Date().toLocaleString()}`, content: contenidoB64, branch: c.branch };
+    if (sha) body.sha = sha;
+
+    const putRes = await fetch(apiUrl, { method: 'PUT', headers, body: JSON.stringify(body) });
+
+    if (putRes.ok) {
+      mostrarEstado('✅ Publicado correctamente en GitHub. Espera 1-2 min para verlo en el link.', 'ok');
+    } else {
+      const err = await putRes.json();
+      mostrarEstado('❌ Error: ' + (err.message || 'No se pudo publicar'), 'error');
+    }
+  } catch (e) {
+    mostrarEstado('❌ Error de red: ' + e.message, 'error');
+  }
+}
+
+function generarPDF() {
+  if (productos.length === 0) { alert('Agrega productos primero'); return; }
+  html2pdf().set({
+    margin: 10, filename: 'Catalogo.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  }).from(document.getElementById('catalogo-preview')).save();
+}
+
+function exportarJSONLocal() {
+  const blob = new Blob([JSON.stringify(productos, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `productos_${Date.now()}.json`;
+  a.click();
+}
+
+function mostrarEstado(msg, tipo) { document.getElementById('estado').innerHTML = `<div class="estado ${tipo}">${msg}</div>`; }
+</script>
+</body>
+</html>
