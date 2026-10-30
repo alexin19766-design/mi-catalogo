@@ -1,14 +1,12 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin - Catálogo</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
-  body { background: #eef2f7; padding: 15px; color: #2c3e50; }
+  body { background: #eef2f7; padding: 15px; color: #2c3e50; margin: 0; }
   h1 { text-align: center; font-size: 22px; }
 
   .login-box { max-width: 400px; margin: 50px auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.1); text-align: center; }
@@ -41,10 +39,21 @@
   .estado.ok { background: #d4edda; color: #155724; }
   .estado.error { background: #f8d7da; color: #721c24; }
   .estado.info { background: #d1ecf1; color: #0c5460; }
+
+  /* ESTILOS PARA QUE EL PDF SALGA PERFECTO */
+  @media print {
+    body { background: #fff; padding: 0; }
+    body * { visibility: hidden; }
+    #catalogo-preview, #catalogo-preview * { visibility: visible; }
+    #catalogo-preview { position: absolute; left: 0; top: 0; width: 100%; border: none; box-shadow: none; padding: 0; }
+    .no-print { display: none !important; }
+    .item-pdf { page-break-inside: avoid; }
+  }
 </style>
 </head>
 <body>
 
+<!-- LOGIN -->
 <div id="login" class="login-box">
   <h1>🔐 Admin Catálogo</h1>
   <p style="color:#888;font-size:13px;">Ingresa la contraseña</p>
@@ -53,10 +62,11 @@
   <p id="loginMsg" style="color:#e74c3c;font-size:13px;"></p>
 </div>
 
+<!-- PANEL PRIVADO -->
 <div id="panel" class="hidden">
-  <h1>📦 Panel de Administración</h1>
+  <h1 class="no-print">📦 Panel de Administración</h1>
 
-  <div class="config-box">
+  <div class="config-box no-print">
     <h3>⚙️ Configuración GitHub (solo se guarda en este navegador)</h3>
     <label>Usuario de GitHub</label>
     <input type="text" id="cfgUser" placeholder="tu-usuario" value="alexin19766-design">
@@ -71,7 +81,7 @@
     <button class="btn btn-purple" style="margin-top:8px;" onclick="guardarConfig()">Guardar configuración</button>
   </div>
 
-  <div class="panel">
+  <div class="panel no-print">
     <h3>➕ Agregar producto</h3>
     <div class="form-grid">
       <input type="text" id="nombre" placeholder="Nombre *">
@@ -83,30 +93,31 @@
     <button class="btn" style="margin-top:10px;" onclick="agregarProducto()">Agregar Producto</button>
   </div>
 
-  <div class="panel">
+  <div class="panel no-print">
     <h3>📋 Productos actuales (<span id="contador">0</span>)</h3>
     <div id="lista-productos"></div>
   </div>
 
-  <div class="actions" style="margin-bottom:30px;">
+  <div class="actions no-print" style="margin-bottom:30px;">
     <button class="btn btn-purple" onclick="publicarEnGitHub()">🚀 Publicar cambios en GitHub</button>
-    <button class="btn btn-blue" onclick="generarPDF()">📄 Generar PDF</button>
-    <button class="btn btn-orange" onclick="exportarJSONLocal()">💾 Descargar JSON</button>
+    <button class="btn btn-blue" onclick="generarPDF()">📄 Generar PDF / Imprimir</button>
+    <button class="btn btn-orange" onclick="exportarJSONLocal()">💾 Descargar JSON de respaldo</button>
     <button class="btn btn-red" onclick="borrarTodo()">🗑️ Borrar todos los productos</button>
   </div>
-  <div id="estado"></div>
+  <div id="estado" class="no-print"></div>
 
-  <div id="catalogo-preview" style="background:#fff;padding:20px;border-radius:12px;margin-top:20px;">
+  <!-- VISTA PREVIA PARA EL PDF -->
+  <div id="catalogo-preview" style="background:#fff;padding:20px;border-radius:12px;margin-top:20px;box-shadow: 0 2px 12px rgba(0,0,0,.08);">
     <div style="text-align:center;border-bottom:3px solid #2c3e50;padding-bottom:10px;margin-bottom:15px;">
-      <h2 style="margin:0;font-size:20px;">CATÁLOGO DE PRODUCTOS</h2>
-      <p style="color:#888;font-size:12px;margin:5px 0 0;">Contáctanos por WhatsApp</p>
+      <h2 style="margin:0;font-size:22px;">CATÁLOGO DE PRODUCTOS</h2>
+      <p style="color:#888;font-size:13px;margin:5px 0 0;">Contáctanos por WhatsApp para más información</p>
     </div>
     <div id="preview-productos"></div>
   </div>
 </div>
 
 <script>
-const CLAVE_ADMIN = "admin123"; // <-- CAMBIA ESTA CONTRASEÑA
+const CLAVE_ADMIN = "admin123"; // <-- CAMBIA ESTA CONTRASEÑA SI QUIERES
 
 function entrar() {
   if (document.getElementById('pass').value === CLAVE_ADMIN) {
@@ -183,7 +194,7 @@ function eliminar(i) {
 }
 
 function borrarTodo() {
-  if (confirm('¿Borrar TODO?')) {
+  if (confirm('¿Borrar TODOS los productos? Esto no afecta a GitHub hasta que publiques.')) {
     productos = [];
     guardarLocal();
     renderizar();
@@ -192,6 +203,8 @@ function borrarTodo() {
 
 function renderizar() {
   document.getElementById('contador').textContent = productos.length;
+  
+  // Lista del panel
   document.getElementById('lista-productos').innerHTML = productos.length === 0
     ? '<p style="color:#999;text-align:center;font-size:13px;">No hay productos</p>'
     : productos.map((p, i) => `
@@ -204,13 +217,14 @@ function renderizar() {
         <button class="btn btn-red" style="padding:6px 10px;font-size:12px;width:auto;" onclick="eliminar(${i})">X</button>
       </div>`).join('');
 
+  // Vista previa para el PDF
   document.getElementById('preview-productos').innerHTML = productos.map(p => `
-    <div style="display:flex;gap:15px;padding:10px 0;border-bottom:1px solid #eee;page-break-inside:avoid;align-items:center;">
-      ${p.imagen ? `<img src="${p.imagen}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;">` : ''}
+    <div class="item-pdf" style="display:flex;gap:15px;padding:12px 0;border-bottom:1px solid #eee;align-items:center;">
+      ${p.imagen ? `<img src="${p.imagen}" style="width:90px;height:90px;object-fit:cover;border-radius:8px;">` : ''}
       <div>
-        <h3 style="margin:0 0 5px;font-size:15px;">${p.nombre}</h3>
-        <div style="color:#e74c3c;font-weight:bold;font-size:15px;">Q ${p.precio}</div>
-        <div style="color:#666;font-size:12px;">${p.descripcion || ''}</div>
+        <h3 style="margin:0 0 5px;font-size:16px;color:#2c3e50;">${p.nombre}</h3>
+        <div style="color:#e74c3c;font-weight:bold;font-size:16px;">Q ${p.precio}</div>
+        <div style="color:#666;font-size:13px;margin-top:4px;">${p.descripcion || ''}</div>
       </div>
     </div>`).join('');
 }
@@ -242,10 +256,10 @@ async function publicarEnGitHub() {
     const putRes = await fetch(apiUrl, { method: 'PUT', headers, body: JSON.stringify(body) });
 
     if (putRes.ok) {
-      mostrarEstado('✅ Publicado correctamente en GitHub. Espera 1-2 min para verlo en el link.', 'ok');
+      mostrarEstado('✅ Publicado correctamente en GitHub. Espera 1-2 min y recarga tu página pública.', 'ok');
     } else {
       const err = await putRes.json();
-      mostrarEstado('❌ Error: ' + (err.message || 'No se pudo publicar'), 'error');
+      mostrarEstado('❌ Error: ' + (err.message || 'No se pudo publicar. Revisa tu Token.'), 'error');
     }
   } catch (e) {
     mostrarEstado('❌ Error de red: ' + e.message, 'error');
@@ -254,12 +268,13 @@ async function publicarEnGitHub() {
 
 function generarPDF() {
   if (productos.length === 0) { alert('Agrega productos primero'); return; }
-  html2pdf().set({
-    margin: 10, filename: 'Catalogo.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-  }).from(document.getElementById('catalogo-preview')).save();
+  
+  mostrarEstado('⏳ Abriendo menú de impresión... Elige "Guardar como PDF"', 'info');
+  
+  // Ocultamos los botones y esperamos un momento para que carguen las fotos
+  setTimeout(() => {
+    window.print();
+  }, 500);
 }
 
 function exportarJSONLocal() {
@@ -270,7 +285,10 @@ function exportarJSONLocal() {
   a.click();
 }
 
-function mostrarEstado(msg, tipo) { document.getElementById('estado').innerHTML = `<div class="estado ${tipo}">${msg}</div>`; }
+function mostrarEstado(msg, tipo) { 
+  const el = document.getElementById('estado');
+  if(el) el.innerHTML = `<div class="estado ${tipo}">${msg}</div>`; 
+}
 </script>
 </body>
 </html>
