@@ -205,17 +205,17 @@ function renderizar() {
   document.getElementById('contador').textContent = productos.length;
   
   // Lista del panel
-  document.getElementById('lista-productos').innerHTML = productos.length === 0
-    ? '<p style="color:#999;text-align:center;font-size:13px;">No hay productos</p>'
-    : productos.map((p, i) => `
-      <div class="producto-card">
-        ${p.imagen ? `<img src="${p.imagen}">` : '<div style="width:60px;height:60px;background:#eee;border-radius:6px;"></div>'}
-        <div class="producto-info">
-          <h3>${p.nombre}</h3>
-          <div style="color:#e74c3c;font-weight:bold;font-size:13px;">Q ${p.precio}</div>
-        </div>
-        <button class="btn btn-red" style="padding:6px 10px;font-size:12px;width:auto;" onclick="eliminar(${i})">X</button>
-      </div>`).join('');
+  // Vista previa para el PDF
+document.getElementById('preview-productos').innerHTML = productos.map(p => `
+  <div class="item-pdf" style="display:flex;gap:15px;padding:12px 0;border-bottom:1px solid #eee;align-items:center;">
+    ${p.imagen ? `<img src="${p.imagen}" style="width:90px;height:90px;object-fit:cover;border-radius:8px;">` : ''}
+    <div>
+      <h3 style="margin:0 0 5px;font-size:16px;color:#2c3e50;">${p.nombre}</h3>
+      <div style="color:#e74c3c;font-weight:bold;font-size:16px;">Q ${p.precio}</div>
+      <div style="color:#666;font-size:13px;margin-top:4px;">${p.descripcion || ''}</div>
+      <div style="color:#25D366;font-weight:bold;font-size:13px;margin-top:4px;">📞 WhatsApp: ${p.whatsapp || 'No especificado'}</div>
+    </div>
+  </div>`).join('');
 
   // Vista previa para el PDF
   document.getElementById('preview-productos').innerHTML = productos.map(p => `
